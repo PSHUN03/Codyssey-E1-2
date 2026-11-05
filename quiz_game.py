@@ -75,15 +75,19 @@ class QuizGame:
     # 게임 진행
     # ------------------------------------------------------------------
     def play_quiz(self):
-        """퀴즈를 랜덤 순서로 출제하고 결과와 최고 점수를 갱신한다."""
+        """퀴즈를 랜덤 순서로 출제하고 결과와 최고 점수를 갱신한다.
+
+        문제 수가 다르면 점수를 공정하게 비교할 수 없으므로,
+        전체 문제를 푼 게임만 최고 점수에 반영하고 일부만 푼 게임은 연습으로 기록한다.
+        """
         if not self.quizzes:
             self._print_empty_message()
             return
 
         available = len(self.quizzes)
-        total = read_number(
-            f"\n몇 문제를 풀까요? (1-{available}): ", 1, available
-        )
+        print(f"\n💡 전체 {available}문제를 모두 풀어야 최고 점수에 반영됩니다. (일부만 풀면 연습 게임)")
+        total = read_number(f"몇 문제를 풀까요? (1-{available}): ", 1, available)
+        is_full_round = total == available
         # 원본 목록 순서는 유지하고, 출제용으로 섞은 복사본에서 total개를 뽑는다.
         selected = random.sample(self.quizzes, total)
         print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제, 랜덤 출제)")
@@ -96,13 +100,17 @@ class QuizGame:
         print()
         print(LINE)
         print(f"🏆 결과: {total}문제 중 {correct_count}문제 정답! ({score}점)")
-        self._update_best_score(score)
+        if is_full_round:
+            self._update_best_score(score)
+        else:
+            print("📝 일부 문제만 푼 연습 게임이라 최고 점수에는 반영되지 않습니다.")
         print(LINE)
         self.history.append({
             "played_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "total": total,
             "correct": correct_count,
             "score": score,
+            "full_round": is_full_round,
         })
         self.save_state()
 
@@ -192,21 +200,40 @@ class QuizGame:
     # ------------------------------------------------------------------
     def show_score(self):
         """최고 점수와 최근 게임 기록을 출력한다."""
-        if self.best_score is None:
+        if self.best_score is None and not self.history:
             print("\n📭 아직 퀴즈를 푼 기록이 없습니다. 먼저 퀴즈를 풀어 보세요!")
             return
-        print(f"\n🏆 최고 점수: {self.best_score}점 (100점 만점)")
+
+        if self.best_score is None:
+            print("\n🏆 최고 점수: 아직 없음 (전체 문제를 모두 풀면 기록됩니다)")
+        else:
+            best = self._find_best_record()
+            detail = (
+                f"{best['total']}문제 중 {best['correct']}문제 정답"
+                if best else "100점 만점"
+            )
+            print(f"\n🏆 최고 점수: {self.best_score}점 ({detail})")
+
         if not self.history:
             return
         recent = self.history[-HISTORY_DISPLAY_COUNT:][::-1]
         print(f"\n📜 최근 게임 기록 (최근 {len(recent)}회 / 전체 {len(self.history)}회)")
         print(THIN_LINE)
         for record in recent:
+            mark = "" if record.get("full_round", True) else " (연습)"
             print(
                 f"{record['played_at']} | {record['total']}문제 중 "
-                f"{record['correct']}문제 정답 | {record['score']}점"
+                f"{record['correct']}문제 정답 | {record['score']}점{mark}"
             )
         print(THIN_LINE)
+
+    def _find_best_record(self):
+        """최고 점수를 세운 게임 기록을 찾는다. 없으면 None."""
+        for record in self.history:
+            # full_round 키가 없는 이전 기록은 전체 풀이로 간주한다.
+            if record.get("full_round", True) and record["score"] == self.best_score:
+                return record
+        return None
 
     # ------------------------------------------------------------------
     # 파일 저장 / 불러오기 (state.json)
