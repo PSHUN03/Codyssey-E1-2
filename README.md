@@ -431,7 +431,8 @@ git log --oneline -3
 |---|---|
 | 개발 환경 (VSCode, Python 버전, Git 설정) | `docs/screenshots/environment.png` |
 | 메뉴 화면 | `docs/screenshots/menu.png` |
-| 퀴즈 풀기 | `docs/screenshots/play.png` |
+| 퀴즈 풀기 (전체 풀이) | `docs/screenshots/play.png` |
+| 퀴즈 풀기 (연습 게임) | `docs/screenshots/play_practice.png` |
 | 퀴즈 추가 | `docs/screenshots/add_quiz.png` |
 | 퀴즈 목록 | `docs/screenshots/list.png` |
 | 점수 확인 | `docs/screenshots/score.png` |
@@ -443,8 +444,11 @@ git log --oneline -3
 ### 메뉴 화면 (첫 실행: 기본 퀴즈로 시작)
 ![메뉴](docs/screenshots/menu.png)
 
-### 퀴즈 풀기
+### 퀴즈 풀기 (전체 20문제 풀이 → 최고 점수 반영)
 ![퀴즈 풀기](docs/screenshots/play.png)
+
+### 퀴즈 풀기 (3문제만 푼 연습 게임 → 최고 점수 미반영)
+![연습 게임](docs/screenshots/play_practice.png)
 
 ### 퀴즈 추가
 ![퀴즈 추가](docs/screenshots/add_quiz.png)
