@@ -1,0 +1,19 @@
+# 실행 중 생성되는 세이브 데이터 (첫 실행 시 기본 퀴즈로 자동 생성됨)
+state.json
+state.json.bak
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 과제 안내 자료 (코디세이 배포 자료라 저장소에 포함하지 않음)
+*.pdf
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
