@@ -16,6 +16,8 @@ def main():
         game.run()
     except (KeyboardInterrupt, EOFError):
         print("\n\n⚠️  입력이 중단되어 게임을 안전하게 종료합니다.")
+        if game.save_state():
+            print("💾 지금까지의 데이터를 저장했습니다.")
 
 
 if __name__ == "__main__":
