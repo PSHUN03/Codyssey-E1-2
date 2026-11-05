@@ -31,3 +31,14 @@ def read_number(prompt, min_value, max_value):
             print(f"⚠️  범위를 벗어난 숫자입니다. {guide}")
             continue
         return number
+
+
+def read_yes_no(prompt):
+    """y/n 질문에 대한 답을 True/False로 반환한다."""
+    while True:
+        value = input(prompt).strip().lower()
+        if value in ("y", "yes", "예"):
+            return True
+        if value in ("n", "no", "아니오"):
+            return False
+        print("⚠️  y 또는 n을 입력하세요.")

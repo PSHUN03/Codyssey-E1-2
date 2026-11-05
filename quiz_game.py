@@ -6,7 +6,7 @@ import random
 from pathlib import Path
 
 from default_quizzes import create_default_quizzes
-from input_utils import read_number, read_text
+from input_utils import read_number, read_text, read_yes_no
 from quiz import Quiz
 
 LINE = "=" * 40
@@ -24,6 +24,7 @@ class QuizGame:
         "퀴즈 추가",
         "퀴즈 목록",
         "점수 확인",
+        "퀴즈 삭제",
         "종료",
     ]
 
@@ -43,6 +44,7 @@ class QuizGame:
             2: self.add_quiz,
             3: self.list_quizzes,
             4: self.show_score,
+            5: self.delete_quiz,
         }
         exit_choice = len(self.MENU_ITEMS)
         while True:
@@ -150,6 +152,25 @@ class QuizGame:
         for number, quiz in enumerate(self.quizzes, start=1):
             print(f"[{number}] {quiz.question}")
         print(THIN_LINE)
+
+    def delete_quiz(self):
+        """목록에서 번호를 골라 퀴즈를 삭제하고 파일에 반영한다."""
+        if not self.quizzes:
+            self._print_empty_message()
+            return
+        self.list_quizzes()
+        count = len(self.quizzes)
+        number = read_number(f"삭제할 퀴즈 번호 (1-{count}, 0: 취소): ", 0, count)
+        if number == 0:
+            print("↩️  삭제를 취소했습니다.")
+            return
+        quiz = self.quizzes[number - 1]
+        if not read_yes_no(f"'{quiz.question}' 퀴즈를 삭제할까요? (y/n): "):
+            print("↩️  삭제를 취소했습니다.")
+            return
+        del self.quizzes[number - 1]
+        self.save_state()
+        print(f"🗑️  퀴즈를 삭제했습니다. (남은 퀴즈 {len(self.quizzes)}개)")
 
     @staticmethod
     def _print_empty_message():
