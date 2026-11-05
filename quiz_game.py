@@ -2,6 +2,7 @@
 
 import json
 import os
+import random
 from pathlib import Path
 
 from default_quizzes import create_default_quizzes
@@ -67,15 +68,17 @@ class QuizGame:
     # 게임 진행
     # ------------------------------------------------------------------
     def play_quiz(self):
-        """모든 퀴즈를 출제하고 결과와 최고 점수를 갱신한다."""
+        """퀴즈를 랜덤 순서로 출제하고 결과와 최고 점수를 갱신한다."""
         if not self.quizzes:
             self._print_empty_message()
             return
 
         total = len(self.quizzes)
-        print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
+        # 원본 목록 순서는 유지하고, 출제용으로 섞은 복사본을 만든다.
+        selected = random.sample(self.quizzes, total)
+        print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제, 랜덤 출제)")
         correct_count = 0
-        for number, quiz in enumerate(self.quizzes, start=1):
+        for number, quiz in enumerate(selected, start=1):
             if self._ask_quiz(number, quiz):
                 correct_count += 1
 
