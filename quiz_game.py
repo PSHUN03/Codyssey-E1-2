@@ -2,10 +2,12 @@
 
 import json
 import os
+import random
+from datetime import datetime
 from pathlib import Path
 
 from default_quizzes import create_default_quizzes
-from input_utils import read_number, read_text
+from input_utils import read_number, read_text, read_yes_no
 from quiz import Quiz
 
 LINE = "=" * 40
@@ -14,15 +16,19 @@ THIN_LINE = "-" * 40
 # 실행 위치와 상관없이 항상 프로젝트 루트(이 파일이 있는 폴더)의 state.json을 사용한다.
 STATE_FILE = Path(__file__).resolve().parent / "state.json"
 
+HISTORY_DISPLAY_COUNT = 5
+HISTORY_KEYS = ("played_at", "total", "correct", "score")
+
 
 class QuizGame:
-    """퀴즈 목록과 최고 점수를 가지고 게임을 진행한다."""
+    """퀴즈 목록, 최고 점수, 게임 기록을 가지고 게임을 진행한다."""
 
     MENU_ITEMS = [
         "퀴즈 풀기",
         "퀴즈 추가",
         "퀴즈 목록",
         "점수 확인",
+        "퀴즈 삭제",
         "종료",
     ]
 
@@ -30,6 +36,7 @@ class QuizGame:
         self.state_path = Path(state_path)
         self.quizzes = []
         self.best_score = None
+        self.history = []
         self.load_state()
 
     # ------------------------------------------------------------------
@@ -42,6 +49,7 @@ class QuizGame:
             2: self.add_quiz,
             3: self.list_quizzes,
             4: self.show_score,
+            5: self.delete_quiz,
         }
         exit_choice = len(self.MENU_ITEMS)
         while True:
@@ -67,15 +75,20 @@ class QuizGame:
     # 게임 진행
     # ------------------------------------------------------------------
     def play_quiz(self):
-        """모든 퀴즈를 출제하고 결과와 최고 점수를 갱신한다."""
+        """퀴즈를 랜덤 순서로 출제하고 결과와 최고 점수를 갱신한다."""
         if not self.quizzes:
             self._print_empty_message()
             return
 
-        total = len(self.quizzes)
-        print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
+        available = len(self.quizzes)
+        total = read_number(
+            f"\n몇 문제를 풀까요? (1-{available}): ", 1, available
+        )
+        # 원본 목록 순서는 유지하고, 출제용으로 섞은 복사본에서 total개를 뽑는다.
+        selected = random.sample(self.quizzes, total)
+        print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제, 랜덤 출제)")
         correct_count = 0
-        for number, quiz in enumerate(self.quizzes, start=1):
+        for number, quiz in enumerate(selected, start=1):
             if self._ask_quiz(number, quiz):
                 correct_count += 1
 
@@ -85,6 +98,12 @@ class QuizGame:
         print(f"🏆 결과: {total}문제 중 {correct_count}문제 정답! ({score}점)")
         self._update_best_score(score)
         print(LINE)
+        self.history.append({
+            "played_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "total": total,
+            "correct": correct_count,
+            "score": score,
+        })
         self.save_state()
 
     def _ask_quiz(self, number, quiz):
@@ -145,6 +164,25 @@ class QuizGame:
             print(f"[{number}] {quiz.question}")
         print(THIN_LINE)
 
+    def delete_quiz(self):
+        """목록에서 번호를 골라 퀴즈를 삭제하고 파일에 반영한다."""
+        if not self.quizzes:
+            self._print_empty_message()
+            return
+        self.list_quizzes()
+        count = len(self.quizzes)
+        number = read_number(f"삭제할 퀴즈 번호 (1-{count}, 0: 취소): ", 0, count)
+        if number == 0:
+            print("↩️  삭제를 취소했습니다.")
+            return
+        quiz = self.quizzes[number - 1]
+        if not read_yes_no(f"'{quiz.question}' 퀴즈를 삭제할까요? (y/n): "):
+            print("↩️  삭제를 취소했습니다.")
+            return
+        del self.quizzes[number - 1]
+        self.save_state()
+        print(f"🗑️  퀴즈를 삭제했습니다. (남은 퀴즈 {len(self.quizzes)}개)")
+
     @staticmethod
     def _print_empty_message():
         print("\n📭 등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가해 주세요.")
@@ -153,11 +191,22 @@ class QuizGame:
     # 점수
     # ------------------------------------------------------------------
     def show_score(self):
-        """최고 점수를 출력한다."""
+        """최고 점수와 최근 게임 기록을 출력한다."""
         if self.best_score is None:
             print("\n📭 아직 퀴즈를 푼 기록이 없습니다. 먼저 퀴즈를 풀어 보세요!")
             return
         print(f"\n🏆 최고 점수: {self.best_score}점 (100점 만점)")
+        if not self.history:
+            return
+        recent = self.history[-HISTORY_DISPLAY_COUNT:][::-1]
+        print(f"\n📜 최근 게임 기록 (최근 {len(recent)}회 / 전체 {len(self.history)}회)")
+        print(THIN_LINE)
+        for record in recent:
+            print(
+                f"{record['played_at']} | {record['total']}문제 중 "
+                f"{record['correct']}문제 정답 | {record['score']}점"
+            )
+        print(THIN_LINE)
 
     # ------------------------------------------------------------------
     # 파일 저장 / 불러오기 (state.json)
@@ -173,7 +222,7 @@ class QuizGame:
         try:
             with open(self.state_path, encoding="utf-8") as file:
                 data = json.load(file)
-            quizzes, best_score = self._parse_state(data)
+            quizzes, best_score, history = self._parse_state(data)
         except (OSError, ValueError) as error:
             # json.JSONDecodeError, UnicodeDecodeError도 ValueError의 하위 클래스다.
             print(f"⚠️  state.json이 손상되었거나 읽을 수 없습니다. ({error})")
@@ -185,6 +234,7 @@ class QuizGame:
 
         self.quizzes = quizzes
         self.best_score = best_score
+        self.history = history
         score_text = "기록 없음" if best_score is None else f"{best_score}점"
         print(
             f"📂 저장된 데이터를 불러왔습니다. "
@@ -192,10 +242,11 @@ class QuizGame:
         )
 
     def save_state(self):
-        """현재 퀴즈 목록과 최고 점수를 state.json에 저장한다. 성공 여부를 반환한다."""
+        """퀴즈 목록, 최고 점수, 게임 기록을 state.json에 저장한다. 성공 여부를 반환한다."""
         data = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
+            "history": self.history,
         }
         # 임시 파일에 먼저 쓴 뒤 교체해서, 저장 도중 중단돼도 기존 파일이 깨지지 않게 한다.
         temp_path = self.state_path.with_name(self.state_path.name + ".tmp")
@@ -210,7 +261,10 @@ class QuizGame:
 
     @staticmethod
     def _parse_state(data):
-        """JSON 데이터를 검증해 (퀴즈 목록, 최고 점수)로 변환한다. 형식이 틀리면 ValueError."""
+        """JSON 데이터를 검증해 (퀴즈 목록, 최고 점수, 게임 기록)으로 변환한다.
+
+        형식이 틀리면 ValueError를 발생시킨다.
+        """
         if not isinstance(data, dict):
             raise ValueError("최상위 데이터가 객체(dict) 형식이 아닙니다.")
         raw_quizzes = data.get("quizzes")
@@ -225,11 +279,20 @@ class QuizGame:
             or not 0 <= best_score <= 100
         ):
             raise ValueError("best_score 값이 0~100 사이의 정수가 아닙니다.")
-        return quizzes, best_score
+
+        # history는 보너스 기능으로 나중에 추가된 키라, 없으면 빈 기록으로 시작한다.
+        history = data.get("history", [])
+        if not isinstance(history, list) or not all(
+            isinstance(record, dict) and all(key in record for key in HISTORY_KEYS)
+            for record in history
+        ):
+            raise ValueError("history 값의 형식이 올바르지 않습니다.")
+        return quizzes, best_score, history
 
     def _reset_to_default(self):
         self.quizzes = create_default_quizzes()
         self.best_score = None
+        self.history = []
 
     def _backup_broken_file(self):
         """손상된 파일을 state.json.bak으로 보관해 원본 내용을 잃지 않게 한다."""
