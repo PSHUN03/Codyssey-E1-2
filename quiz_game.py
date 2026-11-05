@@ -73,8 +73,11 @@ class QuizGame:
             self._print_empty_message()
             return
 
-        total = len(self.quizzes)
-        # 원본 목록 순서는 유지하고, 출제용으로 섞은 복사본을 만든다.
+        available = len(self.quizzes)
+        total = read_number(
+            f"\n몇 문제를 풀까요? (1-{available}): ", 1, available
+        )
+        # 원본 목록 순서는 유지하고, 출제용으로 섞은 복사본에서 total개를 뽑는다.
         selected = random.sample(self.quizzes, total)
         print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제, 랜덤 출제)")
         correct_count = 0
