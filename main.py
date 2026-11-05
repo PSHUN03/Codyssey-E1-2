@@ -91,8 +91,26 @@ def list_quizzes(quizzes):
     print(THIN_LINE)
 
 
+def update_best_score(score, best_score):
+    """이번 점수와 최고 점수를 비교해 갱신된 최고 점수를 반환한다."""
+    if best_score is None or score > best_score:
+        print("🎉 새로운 최고 점수입니다!")
+        return score
+    print(f"🏅 현재 최고 점수는 {best_score}점입니다.")
+    return best_score
+
+
+def show_score(best_score):
+    """최고 점수를 출력한다."""
+    if best_score is None:
+        print("\n📭 아직 퀴즈를 푼 기록이 없습니다. 먼저 퀴즈를 풀어 보세요!")
+        return
+    print(f"\n🏆 최고 점수: {best_score}점 (100점 만점)")
+
+
 def run():
     quizzes = create_default_quizzes()
+    best_score = None
     while True:
         show_menu()
         choice = read_number("선택: ", 1, len(MENU_ITEMS))
@@ -100,13 +118,15 @@ def run():
             print("\n👋 게임을 종료합니다. 다음에 또 만나요!")
             return
         if choice == 1:
-            play_quiz(quizzes)
+            score = play_quiz(quizzes)
+            if score is not None:
+                best_score = update_best_score(score, best_score)
         elif choice == 2:
             add_quiz(quizzes)
         elif choice == 3:
             list_quizzes(quizzes)
-        else:
-            print(f"\n🚧 '{MENU_ITEMS[choice - 1]}' 기능은 준비 중입니다.")
+        elif choice == 4:
+            show_score(best_score)
 
 
 def main():
